@@ -400,191 +400,6 @@ class DeceptionDetectorGUI:
         self.summary_text = scrolledtext.ScrolledText(self.right_frame, height=8, wrap=tk.WORD)
         self.summary_text.pack(fill=tk.X, pady=5)
         self.summary_text.config(state=tk.DISABLED)
-    
-    def update_visualization(self):
-        """Update the visualization with session data"""
-        # Clear the current figure
-        self.ax.clear()
-        
-        # If we have data, plot it
-        if self.system.interview_data:
-            # Extract interaction numbers and deception scores
-            interactions = list(range(1, len(self.system.interview_data) + 1))
-            scores = [interaction["deception_score"] for interaction in self.system.interview_data]
-            
-            # Create the line plot
-            self.ax.plot(interactions, scores, 'o-', color='blue', linewidth=2, markersize=6)
-            self.ax.set_xlabel('Interaction Number')
-            self.ax.set_ylabel('Deception Score')
-            
-            # Add a horizontal line at the deception threshold (12.0)
-            self.ax.axhline(y=12.0, color='red', linestyle='--', alpha=0.7)
-            self.ax.text(1, 12.5, 'Deception Threshold', color='red', fontsize=8)
-            
-            # Set y-axis limits
-            max_score = max(scores) if scores else 0
-            self.ax.set_ylim([0, max(20.0, max_score + 2)])
-            
-            # Add grid
-            self.ax.grid(True, linestyle='--', alpha=0.7)
-            
-            # Add title
-            self.ax.set_title('Deception Score Trend')
-        else:
-            # If no data, show a message
-            self.ax.text(0.5, 0.5, 'No data available', 
-                         horizontalalignment='center', 
-                         verticalalignment='center',
-                         transform=self.ax.transAxes)
-            self.ax.set_xticks([])
-            self.ax.set_yticks([])
-        
-        # Refresh the canvas
-        self.canvas.draw()
-    
-    def save_session(self):
-        """Save the current session data"""
-        if not self.system.current_session:
-            messagebox.showerror("Error", "No active session to save")
-            return
-            
-        # Ask for the file location
-        filename = tk.filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-            initialfile=f"interview_{self.system.current_subject}_{self.system.current_session}.csv"
-        )
-        
-        if not filename:
-            return  # User cancelled
-            
-        result = self.system.save_session(filename)
-        
-        if result["status"] == "success":
-            messagebox.showinfo("Success", f"Session data saved to {result['filename']}")
-        else:
-            messagebox.showerror("Error", f"Failed to save session: {result['status']}")
-
-class AIDeceptionSimulator:
-    """Class to simulate deceptive and truthful responses for demonstration"""
-    
-    def __init__(self, btoe):
-        """Initialize with a reference to the Behavioral Table of Elements"""
-        self.btoe = btoe
-        self.truthful_behaviors = ["Pe", "No", "Ye", "Br"]
-        self.deceptive_verbal = ["Res", "N-C", "Hes", "Psd"]
-        self.deceptive_nonverbal = ["Ss", "Fns", "Df", "Fw", "Ft", "Fz"]
-        self.stress_baseline = ["Sw", "Df"]  # Common stress behaviors
-        
-    def generate_truthful_response(self, question, stress_level=0.3):
-        """Generate a simulated truthful response"""
-        behaviors = []
-        
-        # Add some baseline truthful behaviors
-        for behavior in self.truthful_behaviors:
-            if random.random() < 0.7:  # 70% chance of each truthful behavior
-                behaviors.append(behavior)
-        
-        # Add some stress behaviors based on stress level
-        for behavior in self.stress_baseline:
-            if random.random() < stress_level:
-                behaviors.append(behavior)
-        
-        # Generate a plausible answer
-        answer = self._generate_answer(question, is_truthful=True)
-        
-        return {
-            "answer": answer,
-            "behaviors": behaviors,
-            "ground_truth": "truthful"
-        }
-    
-    def generate_deceptive_response(self, question, deception_skill=0.5):
-        """Generate a simulated deceptive response"""
-        behaviors = []
-        
-        # Add some baseline stress behaviors
-        for behavior in self.stress_baseline:
-            if random.random() < 0.8:  # 80% chance of baseline stress
-                behaviors.append(behavior)
-        
-        # Add verbal deception indicators based on deception skill
-        # Lower skill = more obvious deception markers
-        verbal_chance = 0.8 - (0.5 * deception_skill)
-        for behavior in self.deceptive_verbal:
-            if random.random() < verbal_chance:
-                behaviors.append(behavior)
-        
-        # Add nonverbal deception indicators
-        nonverbal_chance = 0.7 - (0.4 * deception_skill)
-        for behavior in self.deceptive_nonverbal:
-            if random.random() < nonverbal_chance:
-                behaviors.append(behavior)
-        
-        # Skilled deceivers may include truthful behaviors to appear honest
-        if deception_skill > 0.6:
-            for behavior in self.truthful_behaviors:
-                if random.random() < 0.4:
-                    behaviors.append(behavior)
-        
-        # Generate a plausible deceptive answer
-        answer = self._generate_answer(question, is_truthful=False)
-        
-        return {
-            "answer": answer,
-            "behaviors": behaviors,
-            "ground_truth": "deceptive"
-        }
-    
-    def _generate_answer(self, question, is_truthful=True):
-        """Generate a plausible answer to the question"""
-        # Common question types and possible responses
-        question_lower = question.lower()
-        
-        # Simple demo responses
-        if "name" in question_lower:
-            if is_truthful:
-                return "My name is John Smith."
-            else:
-                return "I'm John... John Smith."
-        
-        elif "where were you" in question_lower:
-            if is_truthful:
-                return "I was at home watching TV all evening."
-            else:
-                return "I was at home. I'm a respectable person, I live in a nice neighborhood and I was just watching some shows on television."
-        
-        elif "know" in question_lower and "victim" in question_lower:
-            if is_truthful:
-                return "No, I've never met them before."
-            else:
-                return "I did not have any relationship with that person."
-        
-        elif "happened" in question_lower:
-            if is_truthful:
-                return "I saw the argument start around 8pm, then I left because I felt uncomfortable."
-            else:
-                return "Well, you know, there was some kind of... discussion going on when I arrived, so I just kept my distance."
-        
-        elif "take" in question_lower or "steal" in question_lower:
-            if is_truthful:
-                return "No, I didn't take anything from the office."
-            else:
-                return "I would never do something like that. I've worked at this company for five years with a perfect record."
-        
-        # Default responses
-        if is_truthful:
-            return "No, that's not what happened. I was just trying to help resolve the situation."
-        else:
-            return "Look, I'm an honest person. I volunteer at the community center and have never been in trouble before. There must be some misunderstanding."
-
-def main():
-    root = tk.Tk()
-    app = DeceptionDetectorGUI(root)
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
         
         # Add visualization area
         ttk.Label(self.right_frame, text="Deception Score Trend:", style="Header.TLabel").pack(anchor="w", pady=5)
@@ -833,3 +648,188 @@ if __name__ == "__main__":
                 cell = self.system.btoe.get_cell(behavior)
                 if cell:
                     self.summary_text.insert(tk.END, f"- {cell.symbol} ({cell.name}): {count}\n")
+    
+    def update_visualization(self):
+        """Update the visualization with session data"""
+        # Clear the current figure
+        self.ax.clear()
+        
+        # If we have data, plot it
+        if self.system.interview_data:
+            # Extract interaction numbers and deception scores
+            interactions = list(range(1, len(self.system.interview_data) + 1))
+            scores = [interaction["deception_score"] for interaction in self.system.interview_data]
+            
+            # Create the line plot
+            self.ax.plot(interactions, scores, 'o-', color='blue', linewidth=2, markersize=6)
+            self.ax.set_xlabel('Interaction Number')
+            self.ax.set_ylabel('Deception Score')
+            
+            # Add a horizontal line at the deception threshold (12.0)
+            self.ax.axhline(y=12.0, color='red', linestyle='--', alpha=0.7)
+            self.ax.text(1, 12.5, 'Deception Threshold', color='red', fontsize=8)
+            
+            # Set y-axis limits
+            max_score = max(scores) if scores else 0
+            self.ax.set_ylim([0, max(20.0, max_score + 2)])
+            
+            # Add grid
+            self.ax.grid(True, linestyle='--', alpha=0.7)
+            
+            # Add title
+            self.ax.set_title('Deception Score Trend')
+        else:
+            # If no data, show a message
+            self.ax.text(0.5, 0.5, 'No data available', 
+                         horizontalalignment='center', 
+                         verticalalignment='center',
+                         transform=self.ax.transAxes)
+            self.ax.set_xticks([])
+            self.ax.set_yticks([])
+        
+        # Refresh the canvas
+        self.canvas.draw()
+    
+    def save_session(self):
+        """Save the current session data"""
+        if not self.system.current_session:
+            messagebox.showerror("Error", "No active session to save")
+            return
+            
+        # Ask for the file location
+        filename = tk.filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            initialfile=f"interview_{self.system.current_subject}_{self.system.current_session}.csv"
+        )
+        
+        if not filename:
+            return  # User cancelled
+            
+        result = self.system.save_session(filename)
+        
+        if result["status"] == "success":
+            messagebox.showinfo("Success", f"Session data saved to {result['filename']}")
+        else:
+            messagebox.showerror("Error", f"Failed to save session: {result['status']}")
+
+class AIDeceptionSimulator:
+    """Class to simulate deceptive and truthful responses for demonstration"""
+    
+    def __init__(self, btoe):
+        """Initialize with a reference to the Behavioral Table of Elements"""
+        self.btoe = btoe
+        self.truthful_behaviors = ["Pe", "No", "Ye", "Br"]
+        self.deceptive_verbal = ["Res", "N-C", "Hes", "Psd"]
+        self.deceptive_nonverbal = ["Ss", "Fns", "Df", "Fw", "Ft", "Fz"]
+        self.stress_baseline = ["Sw", "Df"]  # Common stress behaviors
+        
+    def generate_truthful_response(self, question, stress_level=0.3):
+        """Generate a simulated truthful response"""
+        behaviors = []
+        
+        # Add some baseline truthful behaviors
+        for behavior in self.truthful_behaviors:
+            if random.random() < 0.7:  # 70% chance of each truthful behavior
+                behaviors.append(behavior)
+        
+        # Add some stress behaviors based on stress level
+        for behavior in self.stress_baseline:
+            if random.random() < stress_level:
+                behaviors.append(behavior)
+        
+        # Generate a plausible answer
+        answer = self._generate_answer(question, is_truthful=True)
+        
+        return {
+            "answer": answer,
+            "behaviors": behaviors,
+            "ground_truth": "truthful"
+        }
+    
+    def generate_deceptive_response(self, question, deception_skill=0.5):
+        """Generate a simulated deceptive response"""
+        behaviors = []
+        
+        # Add some baseline stress behaviors
+        for behavior in self.stress_baseline:
+            if random.random() < 0.8:  # 80% chance of baseline stress
+                behaviors.append(behavior)
+        
+        # Add verbal deception indicators based on deception skill
+        # Lower skill = more obvious deception markers
+        verbal_chance = 0.8 - (0.5 * deception_skill)
+        for behavior in self.deceptive_verbal:
+            if random.random() < verbal_chance:
+                behaviors.append(behavior)
+        
+        # Add nonverbal deception indicators
+        nonverbal_chance = 0.7 - (0.4 * deception_skill)
+        for behavior in self.deceptive_nonverbal:
+            if random.random() < nonverbal_chance:
+                behaviors.append(behavior)
+        
+        # Skilled deceivers may include truthful behaviors to appear honest
+        if deception_skill > 0.6:
+            for behavior in self.truthful_behaviors:
+                if random.random() < 0.4:
+                    behaviors.append(behavior)
+        
+        # Generate a plausible deceptive answer
+        answer = self._generate_answer(question, is_truthful=False)
+        
+        return {
+            "answer": answer,
+            "behaviors": behaviors,
+            "ground_truth": "deceptive"
+        }
+    
+    def _generate_answer(self, question, is_truthful=True):
+        """Generate a plausible answer to the question"""
+        # Common question types and possible responses
+        question_lower = question.lower()
+        
+        # Simple demo responses
+        if "name" in question_lower:
+            if is_truthful:
+                return "My name is John Smith."
+            else:
+                return "I'm John... John Smith."
+        
+        elif "where were you" in question_lower:
+            if is_truthful:
+                return "I was at home watching TV all evening."
+            else:
+                return "I was at home. I'm a respectable person, I live in a nice neighborhood and I was just watching some shows on television."
+        
+        elif "know" in question_lower and "victim" in question_lower:
+            if is_truthful:
+                return "No, I've never met them before."
+            else:
+                return "I did not have any relationship with that person."
+        
+        elif "happened" in question_lower:
+            if is_truthful:
+                return "I saw the argument start around 8pm, then I left because I felt uncomfortable."
+            else:
+                return "Well, you know, there was some kind of... discussion going on when I arrived, so I just kept my distance."
+        
+        elif "take" in question_lower or "steal" in question_lower:
+            if is_truthful:
+                return "No, I didn't take anything from the office."
+            else:
+                return "I would never do something like that. I've worked at this company for five years with a perfect record."
+        
+        # Default responses
+        if is_truthful:
+            return "No, that's not what happened. I was just trying to help resolve the situation."
+        else:
+            return "Look, I'm an honest person. I volunteer at the community center and have never been in trouble before. There must be some misunderstanding."
+
+def main():
+    root = tk.Tk()
+    app = DeceptionDetectorGUI(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
